@@ -1,0 +1,10 @@
+node_modules
+dist
+dist-*
+.vite
+*.local
+.DS_Store
+*.tsbuildinfo
+documentation/
+CLAUDE.md
+MILESTONES.md
