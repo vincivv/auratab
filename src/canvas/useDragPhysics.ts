@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useSpring } from '@react-spring/web'
 import { useDrag } from '@use-gesture/react'
 import { snapToGrid } from './snapToGrid'
+import { clampToViewport } from './clampToViewport'
 
 /**
  * Tunable spring constants — this is the Day 1 "feel" gate (spec §10's
@@ -16,12 +17,16 @@ const GRAB_SCALE = 1.04
 interface UseDragPhysicsOptions {
   x: number
   y: number
+  w: number
+  h: number
+  /** Widget stays fully within these bounds — can't be dragged off-screen. */
+  bounds: { width: number; height: number }
   enabled: boolean
   onDragEnd: (pos: { x: number; y: number }) => void
   onDragStateChange?: (dragging: boolean) => void
 }
 
-export function useDragPhysics({ x, y, enabled, onDragEnd, onDragStateChange }: UseDragPhysicsOptions) {
+export function useDragPhysics({ x, y, w, h, bounds, enabled, onDragEnd, onDragStateChange }: UseDragPhysicsOptions) {
   const dragOrigin = useRef({ x, y })
   const isDragging = useRef(false)
 
@@ -50,13 +55,15 @@ export function useDragPhysics({ x, y, enabled, onDragEnd, onDragStateChange }: 
         onDragStateChange?.(true)
       }
 
-      const targetX = dragOrigin.current.x + mx
-      const targetY = dragOrigin.current.y + my
+      const rawX = dragOrigin.current.x + mx
+      const rawY = dragOrigin.current.y + my
+      const { x: targetX, y: targetY } = clampToViewport(rawX, rawY, w, h, bounds)
 
       if (last) {
         isDragging.current = false
         onDragStateChange?.(false)
-        const snapped = snapToGrid(targetX, targetY)
+        const snappedRaw = snapToGrid(targetX, targetY)
+        const snapped = clampToViewport(snappedRaw.x, snappedRaw.y, w, h, bounds)
         api.start({ posX: snapped.x, posY: snapped.y, scale: 1, shadow: 0, config: RELEASE_CONFIG })
         onDragEnd(snapped)
         return

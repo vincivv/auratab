@@ -1,0 +1,56 @@
+import type { Preferences } from '../widgets/types'
+
+interface GeneralTabProps {
+  preferences: Preferences
+  onPreferencesChange: (preferences: Preferences) => void
+  onEnterEditMode: () => void
+}
+
+export function GeneralTab({ preferences, onPreferencesChange, onEnterEditMode }: GeneralTabProps) {
+  return (
+    <div className="settings-general">
+      <button type="button" className="settings-action" onClick={onEnterEditMode}>
+        Edit widgets
+      </button>
+
+      <label className="settings-field">
+        <span>Motion</span>
+        <select
+          value={preferences.reducedMotion}
+          onChange={(e) =>
+            onPreferencesChange({ ...preferences, reducedMotion: e.target.value as Preferences['reducedMotion'] })
+          }
+        >
+          <option value="auto">Auto (match system)</option>
+          <option value="on">Reduced</option>
+          <option value="off">Full motion</option>
+        </select>
+      </label>
+
+      <label className="settings-field">
+        <span>Clock format</span>
+        <select
+          value={preferences.clockFormat}
+          onChange={(e) => onPreferencesChange({ ...preferences, clockFormat: e.target.value as Preferences['clockFormat'] })}
+        >
+          <option value="12h">12-hour</option>
+          <option value="24h">24-hour</option>
+        </select>
+      </label>
+
+      <label className="settings-field">
+        <span>Search engine</span>
+        <select
+          value={preferences.searchEngine}
+          onChange={(e) =>
+            onPreferencesChange({ ...preferences, searchEngine: e.target.value as Preferences['searchEngine'] })
+          }
+        >
+          <option value="google">Google</option>
+          <option value="bing">Bing</option>
+          <option value="duckduckgo">DuckDuckGo</option>
+        </select>
+      </label>
+    </div>
+  )
+}

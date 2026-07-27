@@ -1,5 +1,5 @@
 import { CSSProperties, ReactNode, useMemo } from 'react'
-import { useReducedMotion } from '../lib/reducedMotion'
+import { useEffectiveReducedMotion } from '../lib/ReducedMotionContext'
 
 interface WobbleWrapperProps {
   /** Wobble plays while true — caller decides (editing && not the widget currently being dragged). */
@@ -12,7 +12,7 @@ const WOBBLE_AMPLITUDE_DEG = 1.2
 
 /** FR-2: continuous subtle rotation oscillation, per-instance phase offset so widgets don't sync. */
 export function WobbleWrapper({ active, children }: WobbleWrapperProps) {
-  const reducedMotion = useReducedMotion()
+  const reducedMotion = useEffectiveReducedMotion()
   // Negative animation-delay starts each instance at a different point in the
   // cycle rather than all animating in lockstep.
   const phaseOffsetMs = useMemo(() => Math.random() * WOBBLE_DURATION_MS, [])

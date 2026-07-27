@@ -24,17 +24,50 @@ body {
   position: relative;
   width: 100%;
   height: 100vh;
+  /* Temporary stand-in backdrop only — gives the glass material something
+     with color/edges to blur so it's actually visible. Replace with the
+     real generative background engines in Day 2 (spec §6.5); this is not
+     one of them. */
+  background:
+    radial-gradient(at 15% 20%, #6d5dfc 0%, transparent 55%),
+    radial-gradient(at 85% 15%, #46c8f0 0%, transparent 50%),
+    radial-gradient(at 50% 90%, #ff6b9d 0%, transparent 55%),
+    #12101c;
 }
 
 .draggable-box {
   position: absolute;
   top: 0;
   left: 0;
-  border-radius: 20px;
+  border-radius: 22px;
   will-change: transform;
 }
 
+/* The glass material itself — separate from .draggable-box so its
+   rounded-corner overflow clip can't clip the resize handle (a sibling). */
+.glass-surface {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+/* Diagonal specular sheen, like light catching the surface of glass. */
+.glass-surface::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 45%);
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
 .draggable-box__content {
+  position: relative;
   width: 100%;
   height: 100%;
 }
@@ -48,10 +81,11 @@ body {
   position: absolute;
   right: 6px;
   bottom: 6px;
-  width: 18px;
-  height: 18px;
-  border-radius: 6px;
-  background: rgba(244, 242, 250, 0.9);
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   cursor: nwse-resize;
   touch-action: none;
 }
@@ -74,20 +108,8 @@ body {
   }
 }
 
-.placeholder-widget {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(160deg, #6d5dfc, #46c8f0);
-  color: #12101c;
-  font-weight: 600;
-  border-radius: 20px;
-  user-select: none;
-}
-
-.edit-toggle {
+.edit-toggle,
+.settings-toggle {
   position: absolute;
   top: 20px;
   right: 20px;
@@ -102,6 +124,360 @@ body {
   cursor: pointer;
 }
 
-.edit-toggle:hover {
+.settings-toggle {
+  font-size: 20px;
+}
+
+.edit-toggle:hover,
+.settings-toggle:hover {
   background: rgba(244, 242, 250, 0.2);
+}
+
+.remove-badge {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  z-index: 15;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: #ff5a5f;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Settings panel                                                          */
+/* ---------------------------------------------------------------------- */
+
+.settings-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(10, 8, 20, 0);
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+  pointer-events: none;
+  transition:
+    background 0.32s ease,
+    backdrop-filter 0.32s ease;
+}
+
+.settings-backdrop--open {
+  background: rgba(10, 8, 20, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  pointer-events: auto;
+}
+
+/* Slide-in drawer, docked to the right edge, full height. Same liquid-glass
+   material as .glass-surface (see widget chrome) — translucent tint,
+   blur+saturate, subtle border, specular sheen — just more transparent. */
+.settings-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(380px, 92vw);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 24px 0 0 24px;
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(34px) saturate(180%);
+  -webkit-backdrop-filter: blur(34px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-right: none;
+  box-shadow: -24px 0 60px rgba(0, 0, 0, 0.4);
+  color: #f4f2fa;
+  transform: translateX(100%);
+  transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.settings-backdrop--open .settings-panel {
+  transform: translateX(0);
+}
+
+.settings-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0) 40%);
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+.settings-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 12px 0 20px;
+  flex-shrink: 0;
+}
+
+.settings-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.settings-tab {
+  border: none;
+  background: transparent;
+  color: rgba(244, 242, 250, 0.6);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.settings-tab--active {
+  background: rgba(244, 242, 250, 0.14);
+  color: #f4f2fa;
+}
+
+.settings-panel__close {
+  border: none;
+  background: transparent;
+  color: rgba(244, 242, 250, 0.6);
+  font-size: 20px;
+  line-height: 1;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.settings-panel__close:hover {
+  color: #f4f2fa;
+}
+
+.settings-panel__body {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.settings-general {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-action {
+  align-self: flex-start;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f4f2fa;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.settings-action:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: rgba(244, 242, 250, 0.7);
+}
+
+.settings-field select {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #f4f2fa;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.settings-widgets-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.settings-widget-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  padding: 14px;
+  color: #f4f2fa;
+  cursor: grab;
+  text-align: left;
+}
+
+.settings-widget-card:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.settings-widget-card:active {
+  cursor: grabbing;
+}
+
+.settings-widget-card__name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.settings-widget-card__add {
+  font-size: 12px;
+  color: rgba(244, 242, 250, 0.6);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Widget content                                                          */
+/* ---------------------------------------------------------------------- */
+
+.widget {
+  width: 100%;
+  height: 100%;
+}
+
+.widget--clock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  user-select: none;
+}
+
+.widget-clock__time {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.widget-clock__date {
+  font-size: 13px;
+  color: rgba(244, 242, 250, 0.65);
+}
+
+.widget--search {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+}
+
+.widget--search input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  padding: 10px 16px;
+  color: #f4f2fa;
+  font-size: 14px;
+  outline: none;
+}
+
+.widget--search input::placeholder {
+  color: rgba(244, 242, 250, 0.55);
+}
+
+.widget--notes {
+  resize: none;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #f4f2fa;
+  font-size: 14px;
+  padding: 14px;
+  font-family: inherit;
+}
+
+.widget--notes::placeholder {
+  color: rgba(244, 242, 250, 0.5);
+}
+
+.widget--links {
+  padding: 12px;
+  overflow: auto;
+}
+
+.widget-links__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  gap: 10px;
+}
+
+.widget-links__tile-wrap {
+  position: relative;
+}
+
+.widget-links__tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  color: #f4f2fa;
+  font-size: 11px;
+  text-align: center;
+}
+
+.widget-links__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.widget-links__label {
+  max-width: 64px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.widget-links__remove {
+  position: absolute;
+  top: -4px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 90, 95, 0.9);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  display: none;
+}
+
+.widget-links__tile-wrap:hover .widget-links__remove {
+  display: block;
+}
+
+.widget-links__add {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+  background: transparent;
+  color: rgba(244, 242, 250, 0.7);
+  font-size: 18px;
+  cursor: pointer;
+  justify-self: center;
 }
