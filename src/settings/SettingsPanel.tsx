@@ -55,12 +55,19 @@ export function SettingsPanel({
     >
       <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
         <div className="settings-panel__header">
-          <div className="settings-tabs" role="tablist">
+          <span className="settings-panel__title">Settings</span>
+          <button type="button" className="settings-panel__close" aria-label="Close settings" onClick={onClose}>
+            ×
+          </button>
+        </div>
+
+        <div className="settings-panel__layout">
+          <nav className="settings-nav" role="tablist" aria-orientation="vertical" aria-label="Settings sections">
             <button
               type="button"
               role="tab"
               aria-selected={tab === 'general'}
-              className={tab === 'general' ? 'settings-tab settings-tab--active' : 'settings-tab'}
+              className={tab === 'general' ? 'settings-nav-item settings-nav-item--active' : 'settings-nav-item'}
               onClick={() => setTab('general')}
             >
               General
@@ -69,23 +76,20 @@ export function SettingsPanel({
               type="button"
               role="tab"
               aria-selected={tab === 'widgets'}
-              className={tab === 'widgets' ? 'settings-tab settings-tab--active' : 'settings-tab'}
+              className={tab === 'widgets' ? 'settings-nav-item settings-nav-item--active' : 'settings-nav-item'}
               onClick={() => setTab('widgets')}
             >
               Widgets
             </button>
-          </div>
-          <button type="button" className="settings-panel__close" aria-label="Close settings" onClick={onClose}>
-            ×
-          </button>
-        </div>
+          </nav>
 
-        <div className="settings-panel__body">
-          {tab === 'general' ? (
-            <GeneralTab preferences={preferences} onPreferencesChange={onPreferencesChange} onEnterEditMode={onEnterEditMode} />
-          ) : (
-            <WidgetsTab onAddWidget={onAddWidget} />
-          )}
+          <div className="settings-panel__body">
+            {tab === 'general' ? (
+              <GeneralTab preferences={preferences} onPreferencesChange={onPreferencesChange} onEnterEditMode={onEnterEditMode} />
+            ) : (
+              <WidgetsTab preferences={preferences} onAddWidget={onAddWidget} />
+            )}
+          </div>
         </div>
       </div>
     </div>

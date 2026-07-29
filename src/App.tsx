@@ -87,18 +87,14 @@ export default function App() {
         onPointerUp={handleCanvasPointerUp}
         onPointerLeave={longPress.onPointerLeave}
       >
-        {editing ? (
-          <button type="button" className="edit-toggle" onClick={exit} aria-label="Done editing">
-            Done
-          </button>
-        ) : (
+        {!editing && (
           <button
             type="button"
-            className="settings-toggle"
-            onClick={() => setSettingsOpen(true)}
-            aria-label="Open settings"
+            className={settingsOpen ? 'settings-tab-toggle settings-tab-toggle--open' : 'settings-tab-toggle'}
+            onClick={() => setSettingsOpen((open) => !open)}
+            aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
           >
-            ⚙
+            {settingsOpen ? '›' : '‹'}
           </button>
         )}
 

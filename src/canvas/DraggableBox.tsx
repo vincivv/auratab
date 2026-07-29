@@ -74,30 +74,37 @@ export function DraggableBox({ id, x, y, w, h, editing, onPositionChange, onSize
         zIndex: dragging ? 10 : 1,
       }}
     >
-      {/* Separate layer for the glass material so its rounded-corner clip
-          (overflow: hidden) can't clip the resize handle, which is a sibling. */}
-      <div className="glass-surface">
-        <WobbleWrapper active={editing && !dragging}>
+      {/* Wobble rotates the whole rigid unit — glass block, content, remove
+          badge, and resize handle together — instead of just the content
+          inside a static block. Kept as its own element (rather than folded
+          into .draggable-box's transform) because that element's transform
+          is already driven imperatively by the drag spring every frame;
+          layering a CSS keyframe rotation onto the same `transform` property
+          would fight it. Glass-surface still gets its own layer underneath
+          so its rounded-corner overflow clip can't clip the resize handle
+          or remove badge, which are its siblings here, not its children. */}
+      <WobbleWrapper active={editing && !dragging}>
+        <div className="glass-surface glass-material">
           <div className="draggable-box__content">{children}</div>
-        </WobbleWrapper>
-      </div>
+        </div>
 
-      {editing && <RemoveBadge onRemove={() => onRemove(id)} />}
+        {editing && <RemoveBadge onRemove={() => onRemove(id)} />}
 
-      {editing &&
-        (() => {
-          const resizeGesture = bindResize()
-          return (
-            <div
-              className="resize-handle"
-              {...resizeGesture}
-              onPointerDown={(e) => {
-                e.stopPropagation()
-                resizeGesture.onPointerDown?.(e)
-              }}
-            />
-          )
-        })()}
+        {editing &&
+          (() => {
+            const resizeGesture = bindResize()
+            return (
+              <div
+                className="resize-handle"
+                {...resizeGesture}
+                onPointerDown={(e) => {
+                  e.stopPropagation()
+                  resizeGesture.onPointerDown?.(e)
+                }}
+              />
+            )
+          })()}
+      </WobbleWrapper>
     </animated.div>
   )
 }

@@ -1,5 +1,6 @@
 :root {
   color-scheme: dark;
+  --settings-drawer-width: min(380px, 92vw);
 }
 
 * {
@@ -43,13 +44,12 @@ body {
   will-change: transform;
 }
 
-/* The glass material itself — separate from .draggable-box so its
-   rounded-corner overflow clip can't clip the resize handle (a sibling). */
-.glass-surface {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  overflow: hidden;
+/* Shared visual identity of the "liquid glass" material — translucent tint,
+   blur+saturate, subtle border, specular sheen. Used both by the real widget
+   chrome (.glass-surface, below) and by the Settings gallery's live widget
+   previews (.widget-preview, further down), so the two can't visually drift
+   apart. Only the positioning/sizing differs between the two use sites. */
+.glass-material {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
@@ -57,13 +57,23 @@ body {
 }
 
 /* Diagonal specular sheen, like light catching the surface of glass. */
-.glass-surface::before {
+.glass-material::before {
   content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 45%);
   mix-blend-mode: overlay;
   pointer-events: none;
+}
+
+/* Positioning for the real on-canvas widget chrome — separate from
+   .draggable-box so its rounded-corner overflow clip can't clip the resize
+   handle (a sibling). */
+.glass-surface {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
 }
 
 .draggable-box__content {
@@ -75,6 +85,10 @@ body {
 .wobble-wrapper {
   width: 100%;
   height: 100%;
+  /* Passes .draggable-box's border-radius through to .glass-surface, which
+     also uses `inherit` — now that this wrapper sits between them (see
+     DraggableBox.tsx), without this it inherits 0 instead. */
+  border-radius: inherit;
 }
 
 .resize-handle {
@@ -108,29 +122,41 @@ body {
   }
 }
 
-.edit-toggle,
-.settings-toggle {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  z-index: 20;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(244, 242, 250, 0.12);
+/* Edge-docked handle for the settings drawer — a small tab that pokes out
+   from the right edge, arrow flips direction, and slides to stay attached
+   to the drawer's left edge when it's open (see --settings-drawer-width). */
+.settings-tab-toggle {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  z-index: 55;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-right: none;
+  border-radius: 14px 0 0 14px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
   color: #f4f2fa;
-  font-size: 16px;
+  font-size: 15px;
+  line-height: 1;
   cursor: pointer;
+  transition:
+    right 0.32s cubic-bezier(0.32, 0.72, 0, 1),
+    background 0.2s ease;
 }
 
-.settings-toggle {
-  font-size: 20px;
+.settings-tab-toggle:hover {
+  background: rgba(255, 255, 255, 0.18);
 }
 
-.edit-toggle:hover,
-.settings-toggle:hover {
-  background: rgba(244, 242, 250, 0.2);
+.settings-tab-toggle--open {
+  right: var(--settings-drawer-width);
 }
 
 .remove-badge {
@@ -185,7 +211,7 @@ body {
   top: 0;
   right: 0;
   bottom: 0;
-  width: min(380px, 92vw);
+  width: var(--settings-drawer-width);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -218,29 +244,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24px 12px 0 20px;
+  padding: 20px 16px 16px 20px;
   flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.settings-tabs {
-  display: flex;
-  gap: 8px;
-}
-
-.settings-tab {
-  border: none;
-  background: transparent;
-  color: rgba(244, 242, 250, 0.6);
-  font-size: 14px;
-  font-weight: 600;
-  padding: 8px 14px;
-  border-radius: 999px;
-  cursor: pointer;
-}
-
-.settings-tab--active {
-  background: rgba(244, 242, 250, 0.14);
-  color: #f4f2fa;
+.settings-panel__title {
+  font-size: 15px;
+  font-weight: 700;
 }
 
 .settings-panel__close {
@@ -257,8 +268,49 @@ body {
   color: #f4f2fa;
 }
 
+/* Two-column body: a narrow section nav on the left, content on the right. */
+.settings-panel__layout {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.settings-nav {
+  width: 108px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 8px;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  overflow-y: auto;
+}
+
+.settings-nav-item {
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: rgba(244, 242, 250, 0.6);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.settings-nav-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f4f2fa;
+}
+
+.settings-nav-item--active {
+  background: rgba(255, 255, 255, 0.16);
+  color: #f4f2fa;
+}
+
 .settings-panel__body {
   flex: 1;
+  min-width: 0;
   padding: 20px;
   overflow-y: auto;
 }
@@ -302,20 +354,20 @@ body {
 }
 
 .settings-widgets-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .settings-widget-card {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: flex-start;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(255, 255, 255, 0.06);
   border-radius: 14px;
-  padding: 14px;
+  padding: 10px 14px;
   color: #f4f2fa;
   cursor: grab;
   text-align: left;
@@ -329,14 +381,45 @@ body {
   cursor: grabbing;
 }
 
+/* Fixed-size window onto a live, full-scale render of the widget (see
+   WidgetsTab.tsx) — flex-centers it, then crops to this frame, so what's
+   shown is a faithful, just-smaller version of the real thing rather than a
+   redrawn icon that could drift from how the widget actually looks. */
+.settings-widget-card__preview-frame {
+  width: 92px;
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.widget-preview {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  flex-shrink: 0;
+  /* Previews are inert — real interactive controls (inputs, textareas,
+     buttons) render inside them for visual accuracy, but shouldn't be
+     clickable/typable from inside the gallery card. */
+  pointer-events: none;
+}
+
 .settings-widget-card__name {
+  flex: 1;
   font-weight: 600;
   font-size: 14px;
 }
 
 .settings-widget-card__add {
+  flex-shrink: 0;
   font-size: 12px;
-  color: rgba(244, 242, 250, 0.6);
+  color: rgba(244, 242, 250, 0.85);
+  background: rgba(255, 255, 255, 0.12);
+  padding: 6px 10px;
+  border-radius: 999px;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -480,4 +563,104 @@ body {
   font-size: 18px;
   cursor: pointer;
   justify-self: center;
+}
+
+.widget--todo {
+  position: relative;
+  padding: 14px;
+  overflow-y: auto;
+}
+
+.widget-todo__add {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.14);
+  color: #f4f2fa;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+}
+
+.widget-todo__add:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.widget-todo__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 30px;
+}
+
+.widget-todo__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.widget-todo__circle {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+  background: transparent;
+  cursor: pointer;
+}
+
+.widget-todo__circle--done {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(255, 255, 255, 0.85);
+}
+
+.widget-todo__input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #f4f2fa;
+  font-size: 13px;
+  padding: 4px 0;
+}
+
+.widget-todo__input::placeholder {
+  color: rgba(244, 242, 250, 0.5);
+}
+
+.widget-todo__input--done {
+  color: rgba(244, 242, 250, 0.55);
+  text-decoration: line-through;
+}
+
+.widget-todo__remove {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 90, 95, 0.9);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+}
+
+.widget-todo__row:hover .widget-todo__remove {
+  display: flex;
 }
