@@ -1,5 +1,6 @@
 import { widgetRegistry } from '../widgets/registry'
 import { WIDGET_DRAG_MIME } from './widgetDragType'
+import { cellToPx } from '../canvas/gridConfig'
 import type { Preferences } from '../widgets/types'
 
 interface WidgetsTabProps {
@@ -27,7 +28,9 @@ export function WidgetsTab({ preferences, onAddWidget }: WidgetsTabProps) {
     <div className="settings-widgets-grid">
       {widgetRegistry.map((def) => {
         const Preview = def.Component
-        const scale = Math.min(PREVIEW_FRAME.w / def.defaultSize.w, PREVIEW_FRAME.h / def.defaultSize.h)
+        const widthPx = cellToPx(def.defaultSize.w)
+        const heightPx = cellToPx(def.defaultSize.h)
+        const scale = Math.min(PREVIEW_FRAME.w / widthPx, PREVIEW_FRAME.h / heightPx)
         return (
           <div
             key={def.type}
@@ -53,10 +56,10 @@ export function WidgetsTab({ preferences, onAddWidget }: WidgetsTabProps) {
                 keyboard-tabbed into as if they were functional. */}
             <div className="settings-widget-card__preview-frame" aria-hidden="true" inert>
               <div
-                className="widget-preview glass-material"
+                className={def.chromeless ? 'widget-preview' : 'widget-preview glass-material'}
                 style={{
-                  width: def.defaultSize.w,
-                  height: def.defaultSize.h,
+                  width: widthPx,
+                  height: heightPx,
                   transform: `scale(${scale})`,
                 }}
               >

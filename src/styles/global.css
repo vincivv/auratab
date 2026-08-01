@@ -36,6 +36,27 @@ body {
     #12101c;
 }
 
+/* Faint grid-cell dots, only while something is actively being dragged or
+   resized (App.tsx toggles --visible via onActiveChange) — not during all
+   of edit mode, just the moment of an actual change, so it doesn't clutter
+   the canvas the rest of the time. --dot-size is set inline from the same
+   DOT_SIZE constant gridConfig.ts uses for the real cell math, so the two
+   can't drift apart. Sits behind every widget (z-index unset, painted
+   first) — a background hint, not something that competes for attention. */
+.canvas__grid-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.55) 1.5px, transparent 1.6px);
+  background-size: var(--dot-size) var(--dot-size);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.canvas__grid-overlay--visible {
+  opacity: 0.4;
+}
+
 .draggable-box {
   position: absolute;
   top: 0;
@@ -82,6 +103,37 @@ body {
   height: 100%;
 }
 
+/* Reserves room at the top so the widget's own content doesn't run under
+   the .widget-label row below — applied only when a label is actually
+   rendered (chromeless widgets skip both). */
+.draggable-box__content--labeled {
+  padding-top: 28px;
+}
+
+/* Small type label naming the widget ("Quick Links", "Notes", ...) shown
+   in every glass-card widget's top-left corner — not shown on chromeless
+   widgets (Clock, Search), which are meant to read as bare canvas content,
+   not a labeled card. Sits in the true corner while browsing; shifted right
+   only while edit mode is active, since that's the one time .remove-badge
+   (top:6px/left:6px, 22px) occupies the same corner and would otherwise
+   overlap it. */
+.widget-label {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  z-index: 5;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.widget-label--edit-shifted {
+  left: 34px;
+}
+
 .wobble-wrapper {
   width: 100%;
   height: 100%;
@@ -104,7 +156,7 @@ body {
   touch-action: none;
 }
 
-@keyframes tabscape-wobble {
+@keyframes auratab-wobble {
   0% {
     transform: rotate(calc(var(--wobble-amplitude) * -1));
   }
@@ -161,8 +213,8 @@ body {
 
 .remove-badge {
   position: absolute;
-  top: -6px;
-  left: -6px;
+  top: 6px;
+  left: 6px;
   z-index: 15;
   width: 22px;
   height: 22px;
@@ -170,13 +222,18 @@ body {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  background: #ff5a5f;
-  color: #fff;
+  border: none;
+  background: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.85);
   font-size: 14px;
   line-height: 1;
   padding: 0;
   cursor: pointer;
+}
+
+.remove-badge:hover {
+  background: rgba(255, 255, 255, 0.3);
+  color: #fff;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -336,6 +393,15 @@ body {
   background: rgba(255, 255, 255, 0.14);
 }
 
+.settings-action--danger {
+  border-color: rgba(255, 90, 95, 0.4);
+  color: #ff9a9d;
+}
+
+.settings-action--danger:hover {
+  background: rgba(255, 90, 95, 0.14);
+}
+
 .settings-field {
   display: flex;
   flex-direction: column;
@@ -436,18 +502,33 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 2px;
   user-select: none;
+  /* Chromeless (NFR-6: contrast) — no glass card behind this one to
+     guarantee contrast against the canvas, so the text needs its own. */
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+  /* Establishes a container-query context sized to the box's real current
+     pixel dimensions (set inline by DraggableBox as you drag-resize it) —
+     lets the numbers below scale continuously with the box instead of
+     staying a fixed size while empty space grows around them. */
+  container-type: size;
 }
 
 .widget-clock__time {
-  font-size: 28px;
+  /* min(...cqw, ...cqh) so it scales with whichever dimension is tighter —
+     grows with the box in both directions without overflowing either one
+     at wide-short or narrow-tall aspect ratios. Coefficients tuned so the
+     smallest preset (160×80px) lands close to the box's edges, not floating
+     in the middle of it — nudge these if a size still looks loose/tight. */
+  font-size: clamp(20px, min(20cqw, 40cqh), 72px);
   font-weight: 600;
   letter-spacing: 0.5px;
+  line-height: 1.1;
 }
 
 .widget-clock__date {
-  font-size: 13px;
+  font-size: clamp(10px, min(8cqw, 16cqh), 24px);
+  line-height: 1.1;
   color: rgba(244, 242, 250, 0.65);
 }
 
@@ -473,18 +554,210 @@ body {
 }
 
 .widget--notes {
+  position: relative;
+  padding: 14px;
+  overflow-y: auto;
+}
+
+.widget-notes__add {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.14);
+  color: #f4f2fa;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+}
+
+.widget-notes__add:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.widget-notes__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 30px;
+}
+
+.widget-notes__row-wrap {
+  position: relative;
+}
+
+.widget-notes__row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.widget-notes__row:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.widget-notes__row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.widget-notes__row-title {
+  color: #f4f2fa;
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.widget-notes__row-preview {
+  color: rgba(244, 242, 250, 0.55);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.widget-notes__row-date {
+  flex-shrink: 0;
+  color: rgba(244, 242, 250, 0.45);
+  font-size: 10px;
+}
+
+.widget-notes__row-remove {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 90, 95, 0.9);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  display: none;
+}
+
+.widget-notes__row-wrap:hover .widget-notes__row-remove {
+  display: block;
+}
+
+.note-editor-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 8, 20, 0.55);
+  backdrop-filter: blur(6px);
+  padding: 24px;
+}
+
+.note-editor {
+  width: min(640px, 100%);
+  height: min(560px, 100%);
+  display: flex;
+  flex-direction: column;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: linear-gradient(160deg, rgba(94, 73, 168, 0.9), rgba(52, 120, 158, 0.9));
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.note-editor__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.note-editor__title-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #f4f2fa;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.note-editor__title-input::placeholder {
+  color: rgba(244, 242, 250, 0.5);
+}
+
+.note-editor__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.note-editor__delete,
+.note-editor__close {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: #f4f2fa;
+  font-size: 12px;
+  border-radius: 999px;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+
+.note-editor__delete:hover {
+  background: rgba(255, 90, 95, 0.5);
+  border-color: rgba(255, 90, 95, 0.6);
+}
+
+.note-editor__close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.note-editor__body {
+  flex: 1;
   resize: none;
   border: none;
   outline: none;
   background: transparent;
   color: #f4f2fa;
   font-size: 14px;
-  padding: 14px;
+  line-height: 1.6;
+  padding: 16px 18px;
   font-family: inherit;
 }
 
-.widget--notes::placeholder {
+.note-editor__body::placeholder {
   color: rgba(244, 242, 250, 0.5);
+}
+
+.note-editor__footer {
+  padding: 10px 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(244, 242, 250, 0.5);
+  font-size: 11px;
 }
 
 .widget--links {
@@ -523,6 +796,15 @@ body {
   justify-content: center;
   font-weight: 600;
   font-size: 15px;
+}
+
+.widget-links__favicon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.16);
+  object-fit: contain;
+  padding: 6px;
 }
 
 .widget-links__label {
@@ -663,4 +945,110 @@ body {
 
 .widget-todo__row:hover .widget-todo__remove {
   display: flex;
+}
+
+.widget--weather {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 14px;
+  text-align: center;
+}
+
+.widget-weather__change {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.14);
+  color: #f4f2fa;
+  font-size: 11px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.widget-weather__change:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.widget-weather__icon {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.widget-weather__temp {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.widget-weather__condition {
+  font-size: 12px;
+  color: rgba(244, 242, 250, 0.75);
+}
+
+.widget-weather__place {
+  font-size: 11px;
+  color: rgba(244, 242, 250, 0.55);
+}
+
+.widget-weather__status {
+  font-size: 13px;
+  color: rgba(244, 242, 250, 0.7);
+}
+
+.widget-weather__status--error {
+  color: #ffb4b4;
+}
+
+.widget--weather-setup {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px;
+}
+
+.widget-weather__prompt {
+  font-size: 12px;
+  color: rgba(244, 242, 250, 0.7);
+  text-align: center;
+}
+
+.widget--weather-setup input {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: #f4f2fa;
+  font-size: 13px;
+  outline: none;
+}
+
+.widget--weather-setup input::placeholder {
+  color: rgba(244, 242, 250, 0.5);
+}
+
+.widget--weather-setup button[type='submit'] {
+  border: none;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.18);
+  color: #f4f2fa;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px;
+  cursor: pointer;
+}
+
+.widget--weather-setup button[type='submit']:hover {
+  background: rgba(255, 255, 255, 0.26);
 }

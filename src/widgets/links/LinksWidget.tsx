@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { WidgetComponentProps } from '../types'
 
 interface LinkItem {
@@ -11,10 +12,40 @@ interface LinksData extends Record<string, unknown> {
 }
 
 /**
+ * Real site favicons via Google's public favicon endpoint (no API key, no
+ * backend — see CLAUDE.md's "Network calls" entry for the full reasoning
+ * and why this is different from the earlier offline-only stance). Falls
+ * back to an initial-letter tile if the request fails (offline, endpoint
+ * down, or the URL isn't parseable) rather than a broken image icon.
+ */
+function LinkIcon({ url, label }: { url: string; label: string }) {
+  const [failed, setFailed] = useState(false)
+
+  let domain: string | null = null
+  try {
+    domain = new URL(url).hostname
+  } catch {
+    domain = null
+  }
+
+  if (failed || !domain) {
+    return <span className="widget-links__avatar">{label.charAt(0).toUpperCase()}</span>
+  }
+
+  return (
+    <img
+      className="widget-links__favicon"
+      src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`}
+      alt=""
+      onError={() => setFailed(true)}
+    />
+  )
+}
+
+/**
  * Minimal add flow (window.prompt) rather than a polished inline editor —
  * good enough to make the widget functional; refine later if it needs to
- * feel first-class. No favicon fetching (that would be a network call,
- * against NFR-3/NFR-5) — uses a plain initial-letter tile instead.
+ * feel first-class.
  */
 export function LinksWidget({ data, onDataChange }: WidgetComponentProps<LinksData>) {
   const links = data.links ?? []
@@ -42,7 +73,7 @@ export function LinksWidget({ data, onDataChange }: WidgetComponentProps<LinksDa
         {links.map((link) => (
           <div key={link.id} className="widget-links__tile-wrap">
             <a className="widget-links__tile" href={link.url} target="_blank" rel="noreferrer">
-              <span className="widget-links__avatar">{link.label.charAt(0).toUpperCase()}</span>
+              <LinkIcon url={link.url} label={link.label} />
               <span className="widget-links__label">{link.label}</span>
             </a>
             <button

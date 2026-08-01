@@ -3,7 +3,7 @@ import pkg from './package.json'
 
 export default defineManifest({
   manifest_version: 3,
-  name: 'Tabscape',
+  name: 'AuraTab',
   description: 'Your new tab, rearranged like your home screen.',
   version: pkg.version,
   icons: {

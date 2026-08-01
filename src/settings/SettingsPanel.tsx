@@ -13,6 +13,7 @@ interface SettingsPanelProps {
   onAddWidget: (type: string) => void
   onDropWidget: (type: string, clientPos: { x: number; y: number }) => void
   onEnterEditMode: () => void
+  onResetLayout: () => void
   onClose: () => void
 }
 
@@ -32,6 +33,7 @@ export function SettingsPanel({
   onAddWidget,
   onDropWidget,
   onEnterEditMode,
+  onResetLayout,
   onClose,
 }: SettingsPanelProps) {
   const [tab, setTab] = useState<SettingsTabId>('general')
@@ -85,7 +87,12 @@ export function SettingsPanel({
 
           <div className="settings-panel__body">
             {tab === 'general' ? (
-              <GeneralTab preferences={preferences} onPreferencesChange={onPreferencesChange} onEnterEditMode={onEnterEditMode} />
+              <GeneralTab
+                preferences={preferences}
+                onPreferencesChange={onPreferencesChange}
+                onEnterEditMode={onEnterEditMode}
+                onResetLayout={onResetLayout}
+              />
             ) : (
               <WidgetsTab preferences={preferences} onAddWidget={onAddWidget} />
             )}

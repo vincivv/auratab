@@ -4,13 +4,18 @@ interface GeneralTabProps {
   preferences: Preferences
   onPreferencesChange: (preferences: Preferences) => void
   onEnterEditMode: () => void
+  onResetLayout: () => void
 }
 
-export function GeneralTab({ preferences, onPreferencesChange, onEnterEditMode }: GeneralTabProps) {
+export function GeneralTab({ preferences, onPreferencesChange, onEnterEditMode, onResetLayout }: GeneralTabProps) {
   return (
     <div className="settings-general">
       <button type="button" className="settings-action" onClick={onEnterEditMode}>
         Edit widgets
+      </button>
+
+      <button type="button" className="settings-action settings-action--danger" onClick={onResetLayout}>
+        Reset to default layout
       </button>
 
       <label className="settings-field">

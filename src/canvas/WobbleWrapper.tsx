@@ -20,7 +20,7 @@ export function WobbleWrapper({ active, children }: WobbleWrapperProps) {
   const style: CSSProperties =
     active && !reducedMotion
       ? {
-          animationName: 'tabscape-wobble',
+          animationName: 'auratab-wobble',
           animationDuration: `${WOBBLE_DURATION_MS}ms`,
           animationDelay: `-${phaseOffsetMs}ms`,
           animationIterationCount: 'infinite',

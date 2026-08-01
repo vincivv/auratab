@@ -1,9 +1,9 @@
 import { useCallback, useRef, useState } from 'react'
 import { DraggableBox } from './canvas/DraggableBox'
-import { clampToViewport } from './canvas/clampToViewport'
 import { useEditMode } from './canvas/useEditMode'
 import { useLongPress } from './canvas/useLongPress'
-import { GRID_UNIT } from './canvas/gridConfig'
+import { cellToPx, DOT_SIZE, getGridDimensions, pxToCell } from './canvas/gridConfig'
+import { clamp } from './lib/clamp'
 import { getWidgetDefinition } from './widgets/registry'
 import { SettingsPanel } from './settings/SettingsPanel'
 import { ReducedMotionProvider } from './lib/ReducedMotionContext'
@@ -15,15 +15,29 @@ export default function App() {
 
   const widgets = useLayoutStore((s) => s.widgets)
   const preferences = useLayoutStore((s) => s.preferences)
-  const addWidgetInstance = useLayoutStore((s) => s.addWidget)
+  const addWidgetAt = useLayoutStore((s) => s.addWidgetAt)
   const removeWidgetInstance = useLayoutStore((s) => s.removeWidget)
-  const updateWidgetPosition = useLayoutStore((s) => s.updateWidgetPosition)
-  const updateWidgetSize = useLayoutStore((s) => s.updateWidgetSize)
+  const moveWidgetToCell = useLayoutStore((s) => s.moveWidgetToCell)
+  const resizeWidgetToCells = useLayoutStore((s) => s.resizeWidgetToCells)
   const updateWidgetData = useLayoutStore((s) => s.updateWidgetData)
   const setPreferences = useLayoutStore((s) => s.setPreferences)
+  const resetToDefault = useLayoutStore((s) => s.resetToDefault)
 
   const { editing, enter, exit } = useEditMode()
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // Which widgets are actively being dragged/resized right now — non-empty
+  // means show the grid dot overlay (see .canvas__grid-overlay).
+  const [activeWidgetIds, setActiveWidgetIds] = useState<Set<string>>(new Set())
+
+  const handleActiveChange = useCallback((id: string, active: boolean) => {
+    setActiveWidgetIds((prev) => {
+      if (active === prev.has(id)) return prev
+      const next = new Set(prev)
+      if (active) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  }, [])
 
   // Tracks whether edit mode was just entered by the in-progress long-press
   // gesture, so its own release doesn't immediately trigger the tap-outside-
@@ -35,29 +49,52 @@ export default function App() {
   }, [enter])
   const longPress = useLongPress({ onLongPress: handleLongPress })
 
+  // DraggableBox reports pixel positions (it stays purely pixel-based, same
+  // as before the grid pivot — see its doc comment). This is the boundary
+  // where a release gets rounded to the nearest cell and handed to the
+  // collision-aware store action.
+  const handlePositionChange = useCallback(
+    (id: string, pixelPos: { x: number; y: number }) => {
+      const widget = useLayoutStore.getState().widgets.find((w) => w.id === id)
+      if (!widget) return
+      const { columns, rows } = getGridDimensions(window.innerWidth, window.innerHeight)
+      const col = clamp(pxToCell(pixelPos.x), 0, Math.max(0, columns - widget.size.w))
+      const row = clamp(pxToCell(pixelPos.y), 0, Math.max(0, rows - widget.size.h))
+      moveWidgetToCell(id, col, row)
+    },
+    [moveWidgetToCell],
+  )
+
+  const handleSizeChange = useCallback(
+    (id: string, pixelSize: { w: number; h: number }) => {
+      resizeWidgetToCells(id, Math.max(1, pxToCell(pixelSize.w)), Math.max(1, pxToCell(pixelSize.h)))
+    },
+    [resizeWidgetToCells],
+  )
+
   const addWidget = useCallback(
     (type: string, dropPoint?: { x: number; y: number }) => {
       const def = getWidgetDefinition(type)
       if (!def) return
-      let rawX: number
-      let rawY: number
+      const { columns, rows } = getGridDimensions(window.innerWidth, window.innerHeight)
+      let col: number
+      let row: number
       if (dropPoint) {
         // Center the new widget under the drop point rather than anchoring
         // its top-left corner there.
-        rawX = dropPoint.x - def.defaultSize.w / 2
-        rawY = dropPoint.y - def.defaultSize.h / 2
+        col = pxToCell(dropPoint.x - cellToPx(def.defaultSize.w) / 2)
+        row = pxToCell(dropPoint.y - cellToPx(def.defaultSize.h) / 2)
       } else {
-        const cascade = (useLayoutStore.getState().widgets.length % 6) * GRID_UNIT * 4
-        rawX = GRID_UNIT * 10 + cascade
-        rawY = GRID_UNIT * 10 + cascade
+        // Simple diagonal cascade for click-to-add (no specific drop point).
+        const step = useLayoutStore.getState().widgets.length % 6
+        col = 1 + step
+        row = 1 + step
       }
-      const { x, y } = clampToViewport(rawX, rawY, def.defaultSize.w, def.defaultSize.h, {
-        width: window.innerWidth,
-        height: window.innerHeight,
-      })
-      addWidgetInstance({ id: crypto.randomUUID(), type, position: { x, y }, size: def.defaultSize, data: def.defaultData })
+      col = clamp(col, 0, Math.max(0, columns - def.defaultSize.w))
+      row = clamp(row, 0, Math.max(0, rows - def.defaultSize.h))
+      addWidgetAt({ id: crypto.randomUUID(), type, position: { col, row }, size: def.defaultSize, data: def.defaultData })
     },
-    [addWidgetInstance],
+    [addWidgetAt],
   )
 
   const handleEnterEditModeFromSettings = useCallback(() => {
@@ -82,11 +119,17 @@ export default function App() {
     <ReducedMotionProvider preference={preferences.reducedMotion}>
       <div
         className="canvas"
+        style={{ ['--dot-size' as string]: `${DOT_SIZE}px` }}
         onPointerDown={longPress.onPointerDown}
         onPointerMove={longPress.onPointerMove}
         onPointerUp={handleCanvasPointerUp}
         onPointerLeave={longPress.onPointerLeave}
       >
+        <div
+          className={activeWidgetIds.size > 0 ? 'canvas__grid-overlay canvas__grid-overlay--visible' : 'canvas__grid-overlay'}
+          aria-hidden="true"
+        />
+
         {!editing && (
           <button
             type="button"
@@ -106,14 +149,20 @@ export default function App() {
             <DraggableBox
               key={instance.id}
               id={instance.id}
-              x={instance.position.x}
-              y={instance.position.y}
-              w={instance.size.w}
-              h={instance.size.h}
+              x={cellToPx(instance.position.col)}
+              y={cellToPx(instance.position.row)}
+              w={cellToPx(instance.size.w)}
+              h={cellToPx(instance.size.h)}
+              minSize={{ w: cellToPx(def.minSize.w), h: cellToPx(def.minSize.h) }}
+              maxSize={{ w: cellToPx(def.maxSize.w), h: cellToPx(def.maxSize.h) }}
+              gridSize={DOT_SIZE}
               editing={editing}
-              onPositionChange={updateWidgetPosition}
-              onSizeChange={updateWidgetSize}
+              onPositionChange={handlePositionChange}
+              onSizeChange={handleSizeChange}
               onRemove={removeWidgetInstance}
+              onActiveChange={handleActiveChange}
+              chromeless={def.chromeless}
+              label={def.chromeless ? undefined : def.displayName}
             >
               <WidgetComponent
                 data={instance.data}
@@ -131,6 +180,7 @@ export default function App() {
           onAddWidget={addWidget}
           onDropWidget={addWidget}
           onEnterEditMode={handleEnterEditModeFromSettings}
+          onResetLayout={resetToDefault}
           onClose={() => setSettingsOpen(false)}
         />
       </div>

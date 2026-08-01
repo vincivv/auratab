@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useSpring } from '@react-spring/web'
 import { useDrag } from '@use-gesture/react'
-import { snapToGrid } from './snapToGrid'
 import { clampToViewport } from './clampToViewport'
 
 /**
@@ -21,12 +20,14 @@ interface UseDragPhysicsOptions {
   h: number
   /** Widget stays fully within these bounds — can't be dragged off-screen. */
   bounds: { width: number; height: number }
+  /** Pixel increment to snap the release position to (e.g. the grid's DOT_SIZE) — see the `last` branch below for why this can't be left to the caller alone. */
+  gridSize: number
   enabled: boolean
   onDragEnd: (pos: { x: number; y: number }) => void
   onDragStateChange?: (dragging: boolean) => void
 }
 
-export function useDragPhysics({ x, y, w, h, bounds, enabled, onDragEnd, onDragStateChange }: UseDragPhysicsOptions) {
+export function useDragPhysics({ x, y, w, h, bounds, gridSize, enabled, onDragEnd, onDragStateChange }: UseDragPhysicsOptions) {
   const dragOrigin = useRef({ x, y })
   const isDragging = useRef(false)
 
@@ -62,10 +63,20 @@ export function useDragPhysics({ x, y, w, h, bounds, enabled, onDragEnd, onDragS
       if (last) {
         isDragging.current = false
         onDragStateChange?.(false)
-        const snappedRaw = snapToGrid(targetX, targetY)
-        const snapped = clampToViewport(snappedRaw.x, snappedRaw.y, w, h, bounds)
-        api.start({ posX: snapped.x, posY: snapped.y, scale: 1, shadow: 0, config: RELEASE_CONFIG })
-        onDragEnd(snapped)
+        // Snap to the grid ourselves rather than relying solely on the
+        // App.tsx round-trip (cell math -> store -> new x/y props -> the
+        // effect above re-springing to them): if the release rounds back to
+        // the SAME cell it started in, the store's position value doesn't
+        // change, so that effect's dependencies don't change either and it
+        // never re-fires — the widget would silently stay wherever it was
+        // visually released instead of on the grid. Snapping locally means
+        // it's correct immediately, regardless of whether the store ends up
+        // agreeing later.
+        const snappedX = Math.round(targetX / gridSize) * gridSize
+        const snappedY = Math.round(targetY / gridSize) * gridSize
+        const clamped = clampToViewport(snappedX, snappedY, w, h, bounds)
+        api.start({ posX: clamped.x, posY: clamped.y, scale: 1, shadow: 0, config: RELEASE_CONFIG })
+        onDragEnd(clamped)
         return
       }
 

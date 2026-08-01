@@ -14,7 +14,9 @@ export interface Preferences {
 export interface WidgetInstance {
   id: string
   type: string
-  position: { x: number; y: number }
+  /** Grid cell coordinates (not pixels) — see canvas/gridConfig.ts. */
+  position: { col: number; row: number }
+  /** Size in whole grid cells (not pixels). */
   size: { w: number; h: number }
   data: Record<string, unknown>
 }
@@ -36,9 +38,12 @@ export interface WidgetComponentProps<TData extends Record<string, unknown> = Re
 export interface WidgetDefinition<TData extends Record<string, unknown> = Record<string, unknown>> {
   type: string
   displayName: string
+  /** All three in whole grid cells, not pixels — see canvas/gridConfig.ts. */
   defaultSize: { w: number; h: number }
   minSize: { w: number; h: number }
   maxSize: { w: number; h: number }
+  /** True for widgets meant to float directly on the canvas with no glass card behind them (e.g. Clock, Search) — still draggable/resizable/removable in edit mode, just no visible chrome. */
+  chromeless?: boolean
   defaultData: TData
   Component: ComponentType<WidgetComponentProps<TData>>
 }
