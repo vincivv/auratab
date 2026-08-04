@@ -8,6 +8,10 @@ export const DEFAULT_PREFERENCES: Preferences = {
   reducedMotion: 'auto',
   clockFormat: '12h',
   searchEngine: 'google',
+  // 0 reproduces .glass-material's original hardcoded look exactly (see
+  // global.css) — existing users see no visual change until they touch the
+  // new slider.
+  widgetTransparency: 0,
 }
 
 /**
@@ -207,6 +211,10 @@ export const useLayoutStore = create<LayoutStore>((set) => ({
 
   updateWidgetData: (id, data) => set((s) => ({ widgets: s.widgets.map((w) => (w.id === id ? { ...w, data } : w)) })),
   setPreferences: (preferences) => set({ preferences }),
-  hydrate: (state) => set({ widgets: state.widgets, preferences: state.preferences, hydrated: true }),
+  // Merges onto DEFAULT_PREFERENCES rather than trusting storage's shape
+  // directly — a layout saved before a new preference (like
+  // widgetTransparency) existed would otherwise hydrate with that field
+  // missing.
+  hydrate: (state) => set({ widgets: state.widgets, preferences: { ...DEFAULT_PREFERENCES, ...state.preferences }, hydrated: true }),
   resetToDefault: () => set({ widgets: createDefaultWidgets() }),
 }))

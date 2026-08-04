@@ -9,6 +9,13 @@ export interface Preferences {
   reducedMotion: ReducedMotionPreference
   clockFormat: ClockFormat
   searchEngine: SearchEngineId
+  /** 0-1, how see-through the glass card shell is (not widget content —
+   * text/controls stay fully readable at any setting). 0 = the original
+   * frosted-glass look (max blur, subtle white tint); 1 = fully
+   * transparent (no tint, minimal blur, background clearly visible through
+   * it). Drives the --widget-transparency CSS var, which both the tint
+   * alpha and the blur amount are computed from in global.css. */
+  widgetTransparency: number
 }
 
 export interface WidgetInstance {

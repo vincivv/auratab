@@ -119,7 +119,7 @@ export default function App() {
     <ReducedMotionProvider preference={preferences.reducedMotion}>
       <div
         className="canvas"
-        style={{ ['--dot-size' as string]: `${DOT_SIZE}px` }}
+        style={{ ['--dot-size' as string]: `${DOT_SIZE}px`, ['--widget-transparency' as string]: preferences.widgetTransparency }}
         onPointerDown={longPress.onPointerDown}
         onPointerMove={longPress.onPointerMove}
         onPointerUp={handleCanvasPointerUp}

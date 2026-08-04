@@ -1,6 +1,6 @@
 :root {
   color-scheme: dark;
-  --settings-drawer-width: min(380px, 92vw);
+  --settings-drawer-width: min(460px, 92vw);
 }
 
 * {
@@ -71,9 +71,22 @@ body {
    previews (.widget-preview, further down), so the two can't visually drift
    apart. Only the positioning/sizing differs between the two use sites. */
 .glass-material {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  /* Driven by preferences.widgetTransparency (Settings > General > "Widget
+     transparency") via the --widget-transparency var set on .canvas (0-1;
+     falls back to 0 — the original hardcoded look — if unset, e.g. a
+     gallery preview rendered outside .canvas). Only the card's own tint
+     and blur scale with it, not widget content, so text/controls stay
+     fully readable at any setting.
+     Two things move together as transparency rises, both computed from the
+     same var so there's one control instead of two: the white tint's alpha
+     fades from 0.1 toward 0 (was a flat rgba(255,255,255,0.1) before this
+     became adjustable), and the backdrop blur eases from 24px down to 4px
+     — turning the slider's high end into "background clearly visible
+     through it" rather than the old behavior of the tint alone climbing
+     all the way to 1 and turning the card solid white. */
+  background: rgba(255, 255, 255, calc(0.1 * (1 - var(--widget-transparency, 0))));
+  backdrop-filter: blur(calc(24px - 20px * var(--widget-transparency, 0))) saturate(180%);
+  -webkit-backdrop-filter: blur(calc(24px - 20px * var(--widget-transparency, 0))) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.22);
 }
 
@@ -319,7 +332,7 @@ body {
 }
 
 .settings-panel__title {
-  font-size: 15px;
+  font-size: 20px;
   font-weight: 700;
 }
 
@@ -360,7 +373,7 @@ body {
   border: none;
   background: transparent;
   color: rgba(244, 242, 250, 0.6);
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 600;
   padding: 10px 12px;
   border-radius: 10px;
@@ -431,6 +444,11 @@ body {
   font-size: 14px;
 }
 
+.settings-field input[type='range'] {
+  accent-color: #8a7fd1;
+  cursor: pointer;
+}
+
 .settings-widgets-grid {
   display: flex;
   flex-direction: column;
@@ -438,8 +456,16 @@ body {
 }
 
 .settings-widget-card {
-  display: flex;
-  flex-direction: row;
+  /* Grid instead of flex: fixes the preview column at exactly 92px and the
+     add-button column to its own content width, leaving the name column
+     (1fr) to soak up whatever's left. That guarantees the add button lands
+     in the same horizontal spot on every card regardless of how long/short
+     or how many lines the widget's name wraps to — flex's content-driven
+     sizing was letting that drift per-card. overflow:hidden is a safety net
+     so nothing (a preview, a long name) can ever visually spill past the
+     card's rounded border either. */
+  display: grid;
+  grid-template-columns: 92px 1fr auto;
   align-items: center;
   gap: 12px;
   border: 1px solid rgba(255, 255, 255, 0.16);
@@ -449,6 +475,7 @@ body {
   color: #f4f2fa;
   cursor: grab;
   text-align: left;
+  overflow: hidden;
 }
 
 .settings-widget-card:hover {
@@ -486,13 +513,15 @@ body {
 }
 
 .settings-widget-card__name {
-  flex: 1;
+  /* Lets the grid column's own width govern wrapping instead of the text's
+     min-content size fighting it (the classic flex/grid item overflow
+     trap). */
+  min-width: 0;
   font-weight: 600;
   font-size: 14px;
 }
 
 .settings-widget-card__add {
-  flex-shrink: 0;
   font-size: 12px;
   color: rgba(244, 242, 250, 0.85);
   background: rgba(255, 255, 255, 0.12);

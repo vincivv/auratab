@@ -44,6 +44,18 @@ export function GeneralTab({ preferences, onPreferencesChange, onEnterEditMode, 
       </label>
 
       <label className="settings-field">
+        <span>Widget transparency</span>
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.05}
+          value={preferences.widgetTransparency}
+          onChange={(e) => onPreferencesChange({ ...preferences, widgetTransparency: Number(e.target.value) })}
+        />
+      </label>
+
+      <label className="settings-field">
         <span>Search engine</span>
         <select
           value={preferences.searchEngine}
