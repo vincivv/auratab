@@ -128,13 +128,17 @@ Treat them as settled unless the user reopens them.
   user first (see MILESTONES.md 2026-07-29). Key pieces:
   - `src/canvas/gridConfig.ts` — `DOT_SIZE` (80px/cell), `pxToCell`/
     `cellToPx`, `getGridDimensions(viewportW, viewportH)`.
-  - `src/canvas/gridCollision.ts` — `resolveGridCollisions`, a push-down-only
+  - `src/canvas/gridCollision.ts` — `resolveGridCollisions`, a vertical-only
     collision resolver. This is the "grid reflow / push-displacement" feature
     spec §5.4 and §10 explicitly deferred as higher-risk/post-launch scope —
-    built now anyway per explicit user direction. Always pushes straight
-    down, never sideways or to "nearest empty spot" (simpler, bounded,
-    predictable); if a push would go past the last row it's skipped and the
-    overlap is left in place, since the canvas doesn't scroll.
+    built now anyway per explicit user direction. Down is tried first
+    (simpler, bounded, predictable — never sideways or to "nearest empty
+    spot"); **revised 2026-08-03** to fall back to pushing up above the
+    widget causing the overlap when there's no room below, since widgets
+    dragged near the bottom of the viewport had nowhere to go and were left
+    visibly overlapping — down is still preferred whenever it fits. Only if
+    *neither* direction has room is the push skipped and the overlap left in
+    place, since the canvas doesn't scroll.
   - **`DraggableBox`/`useDragPhysics` stayed pixel-based internally** — the
     continuous drag/resize *feel* is unchanged (this is deliberate: that feel
     was the Day 1 validated risk, not something to touch casually). All

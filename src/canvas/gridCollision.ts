@@ -17,13 +17,17 @@ const MAX_PASSES = 50
  * anyway per explicit user direction (see MILESTONES.md 2026-07-29).
  *
  * Given a moved/resized/newly-added widget's target rect, pushes any other
- * widget it now overlaps straight down until clear, cascading if that push
- * causes a new overlap further down. Direction is always down, never
- * sideways or "nearest empty spot" — simpler to reason about and keeps the
- * algorithm bounded and predictable.
+ * widget it now overlaps out of the way vertically, cascading if that push
+ * causes a new overlap further along. Down is tried first (the original,
+ * more-tested behavior) since it reads as the more natural "make room"
+ * direction; if there's no room below (would push past the last row), it
+ * falls back to pushing up above the widget causing the overlap instead —
+ * added 2026-08-03 after this showed up in practice: widgets dragged near
+ * the bottom of the viewport had nowhere to go and were left overlapping.
+ * Still never sideways or to "nearest empty spot" — simpler to reason about
+ * and keeps the algorithm bounded and predictable.
  *
- * If the grid is packed enough that a widget would need to push past the
- * last row, that push is skipped and the overlap is left in place — there's
+ * If *neither* direction has room, the overlap is left in place — there's
  * no vertical scroll to push into (the canvas is a fixed viewport), so this
  * is a deliberate limit, not a bug. `movedId`'s own rect is never pushed —
  * it only causes pushes.
@@ -49,13 +53,20 @@ export function resolveGridCollisions(
         const other = entries[j]
         if (!rectsOverlap(current.rect, other.rect)) continue
 
-        const pushedRow = other.rect.row + other.rect.h
-        if (pushedRow === current.rect.row) continue // already clear of this one
-        if (pushedRow + current.rect.h > gridRows) continue // no room below — leave the overlap
+        const pushedDownRow = other.rect.row + other.rect.h
+        const pushedUpRow = other.rect.row - current.rect.h
 
-        current.rect = { ...current.rect, row: pushedRow }
-        changed = true
-        break
+        if (pushedDownRow !== current.rect.row && pushedDownRow + current.rect.h <= gridRows) {
+          current.rect = { ...current.rect, row: pushedDownRow }
+          changed = true
+          break
+        }
+        if (pushedUpRow !== current.rect.row && pushedUpRow >= 0) {
+          current.rect = { ...current.rect, row: pushedUpRow }
+          changed = true
+          break
+        }
+        // No room in either direction — leave this overlap in place.
       }
     }
 
