@@ -38,6 +38,9 @@ Treat them as settled unless the user reopens them.
   hardcode `DOT_SIZE` or cell math elsewhere.
 - **Upload size ceilings:** ~25MB images, ~50MB video (spec explicitly deferred
   the exact number — FR-22). Defined in `src/backgrounds/media/uploadValidation.ts`.
+  **Only the image half is built (2026-08-03)** — see "Background picker"
+  below; the 50MB video figure is still just the reserved number for when
+  video upload lands, not yet enforced by real code.
 - **Search widget:** submits to a hardcoded search URL template (default Google),
   with a simple in-widget engine picker — deliberately *not* using
   `chrome.search.query`/the `search` permission, to keep the manifest permission
@@ -170,6 +173,36 @@ Treat them as settled unless the user reopens them.
   widget `colOffset`s on the bottom row) are hand-tuned per user feedback
   through several iterations — treat them as deliberate, not arbitrary,
   before changing them again.
+- **Background picker (2026-08-03):** a new "Background" tab in Settings
+  (`src/settings/BackgroundTab.tsx`, third nav item alongside General/
+  Widgets) — a **first, simpler pass**, not the spec's real generative
+  animated engines (§4.4/§6.5), which are still unbuilt and remain the
+  biggest gap between the spec's vision and what's on screen (see README).
+  Two ways to set the background, both writing to
+  `preferences.background: BackgroundSelection` (`{type:'preset', id}` or
+  `{type:'custom'}`, `src/backgrounds/types.ts`):
+  - **Presets** — a curated, static list of CSS gradients
+    (`src/backgrounds/presets.ts`), palette choices made freely per the
+    "Background palettes" decision above. `'aurora'` is byte-identical to
+    `.canvas`'s original hardcoded gradient and is `DEFAULT_PREFERENCES`'s
+    default, so existing users see zero visual change until they open the
+    new tab.
+  - **Custom image upload** — validated (`src/backgrounds/media/
+    uploadValidation.ts`, the ~25MB ceiling from "Upload size ceilings"
+    above) then stored as a `Blob` in IndexedDB via `idb`
+    (`src/backgrounds/media/backgroundMediaStore.ts`) — single fixed key,
+    "one active custom background," not a saved-uploads gallery; uploading
+    again replaces it. `preferences.background` only stores the `{type:
+    'custom'}` tag (chrome.storage.local isn't meant for large blobs); the
+    actual bytes never touch it, matching the spec §6.2/§6.6/§8 storage
+    split this was already planned around.
+  `src/backgrounds/useBackgroundStyle.ts` resolves either shape into real
+  CSS for `.canvas` — presets are a synchronous lookup, custom needs an
+  async IndexedDB read (returns `{}`, falling through to `.canvas`'s
+  hardcoded CSS fallback, while that resolves, so there's no flash of
+  black). Video upload is out of scope for this pass — file input only
+  accepts `image/*`; the 50MB video ceiling stays a reserved-but-unenforced
+  number until that's built.
 
 ## Day 1 exit criteria (the whole timeline's go/no-go gate)
 

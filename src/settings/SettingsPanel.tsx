@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { GeneralTab } from './GeneralTab'
 import { WidgetsTab } from './WidgetsTab'
+import { BackgroundTab } from './BackgroundTab'
 import { WIDGET_DRAG_MIME } from './widgetDragType'
 import type { Preferences } from '../widgets/types'
 
-type SettingsTabId = 'general' | 'widgets'
+type SettingsTabId = 'general' | 'widgets' | 'background'
 
 interface SettingsPanelProps {
   open: boolean
@@ -83,19 +84,28 @@ export function SettingsPanel({
             >
               Widgets
             </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'background'}
+              className={tab === 'background' ? 'settings-nav-item settings-nav-item--active' : 'settings-nav-item'}
+              onClick={() => setTab('background')}
+            >
+              Background
+            </button>
           </nav>
 
           <div className="settings-panel__body">
-            {tab === 'general' ? (
+            {tab === 'general' && (
               <GeneralTab
                 preferences={preferences}
                 onPreferencesChange={onPreferencesChange}
                 onEnterEditMode={onEnterEditMode}
                 onResetLayout={onResetLayout}
               />
-            ) : (
-              <WidgetsTab preferences={preferences} onAddWidget={onAddWidget} />
             )}
+            {tab === 'widgets' && <WidgetsTab preferences={preferences} onAddWidget={onAddWidget} />}
+            {tab === 'background' && <BackgroundTab preferences={preferences} onPreferencesChange={onPreferencesChange} />}
           </div>
         </div>
       </div>

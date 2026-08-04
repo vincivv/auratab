@@ -12,6 +12,9 @@ export const DEFAULT_PREFERENCES: Preferences = {
   // global.css) — existing users see no visual change until they touch the
   // new slider.
   widgetTransparency: 0,
+  // 'aurora' is the original hardcoded .canvas gradient (see
+  // backgrounds/presets.ts) — same continuity reasoning as above.
+  background: { type: 'preset', id: 'aurora' },
 }
 
 /**

@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react'
+import type { BackgroundSelection } from '../backgrounds/types'
 
 export type ReducedMotionPreference = 'auto' | 'on' | 'off'
 export type ClockFormat = '12h' | '24h'
@@ -16,6 +17,8 @@ export interface Preferences {
    * it). Drives the --widget-transparency CSS var, which both the tint
    * alpha and the blur amount are computed from in global.css. */
   widgetTransparency: number
+  /** Which background .canvas renders — a curated gradient preset or a user-uploaded image (blob lives in IndexedDB, not here). See backgrounds/types.ts. */
+  background: BackgroundSelection
 }
 
 export interface WidgetInstance {

@@ -9,12 +9,14 @@ import { SettingsPanel } from './settings/SettingsPanel'
 import { ReducedMotionProvider } from './lib/ReducedMotionContext'
 import { useLayoutStore } from './store/layoutStore'
 import { useLayoutPersistence } from './store/persistence'
+import { useBackgroundStyle } from './backgrounds/useBackgroundStyle'
 
 export default function App() {
   useLayoutPersistence()
 
   const widgets = useLayoutStore((s) => s.widgets)
   const preferences = useLayoutStore((s) => s.preferences)
+  const backgroundStyle = useBackgroundStyle(preferences.background)
   const addWidgetAt = useLayoutStore((s) => s.addWidgetAt)
   const removeWidgetInstance = useLayoutStore((s) => s.removeWidget)
   const moveWidgetToCell = useLayoutStore((s) => s.moveWidgetToCell)
@@ -119,7 +121,11 @@ export default function App() {
     <ReducedMotionProvider preference={preferences.reducedMotion}>
       <div
         className="canvas"
-        style={{ ['--dot-size' as string]: `${DOT_SIZE}px`, ['--widget-transparency' as string]: preferences.widgetTransparency }}
+        style={{
+          ['--dot-size' as string]: `${DOT_SIZE}px`,
+          ['--widget-transparency' as string]: preferences.widgetTransparency,
+          ...backgroundStyle,
+        }}
         onPointerDown={longPress.onPointerDown}
         onPointerMove={longPress.onPointerMove}
         onPointerUp={handleCanvasPointerUp}

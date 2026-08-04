@@ -26,10 +26,10 @@ point, follow the links inline rather than reading top-to-bottom.
 - 6 widgets: **Clock**, **Search**, **Quick Links**, **Notes**, **To-Do
   List**, **Weather** — see [Widget catalog](#widget-catalog) below.
 - A right-side slide-in Settings drawer: **General** tab (motion/clock
-  format/search engine preferences, an explicit "enter edit mode" action,
-  "Reset to default layout") and **Widgets** tab (a gallery to add widgets,
-  with live previews of each one, click-to-add or drag-and-drop onto the
-  canvas).
+  format/search engine/widget transparency preferences, an explicit "enter
+  edit mode" action, "Reset to default layout"), **Widgets** tab (a gallery
+  to add widgets, with live previews of each one, click-to-add or
+  drag-and-drop onto the canvas), and **Background** tab (see below).
 - Persistence via `chrome.storage.local` (a Zustand store, debounced
   writes) — your layout and preferences survive closing the tab.
 - A real starter/default layout (not a single placeholder) shown on first
@@ -37,15 +37,23 @@ point, follow the links inline rather than reading top-to-bottom.
 - A "liquid glass" visual style — translucent, blurred, bordered cards for
   most widgets; Clock and Search render "chromeless" instead, floating
   directly on the canvas with no card, closer to how a phone's lock-screen
-  clock looks.
+  clock looks. Card transparency (tint alpha + blur) is user-adjustable via
+  a slider in Settings > General.
+- A background picker (`src/backgrounds/`, Settings > Background) — a
+  curated set of static CSS gradient presets, or upload your own image
+  (validated, stored as a `Blob` in IndexedDB via `idb`, not in
+  `chrome.storage.local`). This is a first, simpler pass, not the spec's
+  real generative animated engines — see "Not built yet" below.
 
 **Not built yet** (present in the original spec, still pending):
-- The 4 generative animated background engines the spec calls for — the
-  canvas currently shows a static placeholder gradient, not real animated
-  backgrounds.
-- Local photo/video background upload (would use IndexedDB).
-- Bundled default background media.
-- A background picker UI.
+- The 4 generative animated background engines the spec calls for — still
+  the biggest gap between the spec's vision and what's on screen. The
+  static gradient presets above are a stopgap, not a substitute.
+- Local video background upload — image upload is built (see above); video
+  is not, though the size ceiling for it is already reserved (see
+  `CLAUDE.md`'s "Upload size ceilings").
+- Bundled default background media (photos/videos shipped with the
+  extension) — the presets are CSS gradients, not media files.
 - A formal performance-profiling pass against the spec's load-time/60fps
   targets.
 - Chrome Web Store listing assets and submission.
@@ -109,7 +117,16 @@ src/
 ├── settings/                  the Settings drawer
 │   ├── SettingsPanel.tsx      the slide-in drawer shell + tab switching
 │   ├── GeneralTab.tsx         preferences, edit-mode entry, reset-to-default
-│   └── WidgetsTab.tsx         the widget gallery (live previews, add)
+│   ├── WidgetsTab.tsx         the widget gallery (live previews, add)
+│   └── BackgroundTab.tsx      background presets + custom image upload
+├── backgrounds/                background picker (presets + custom upload;
+│   │                          NOT the spec's generative animated engines)
+│   ├── types.ts               BackgroundSelection (preset id | custom)
+│   ├── presets.ts             curated static CSS gradients
+│   ├── useBackgroundStyle.ts  resolves a BackgroundSelection into CSS
+│   └── media/
+│       ├── uploadValidation.ts     file type/size checks (~25MB images)
+│       └── backgroundMediaStore.ts IndexedDB (via idb) blob storage
 ├── store/
 │   ├── layoutStore.ts         Zustand store — widgets, preferences,
 │   │                          collision-aware move/resize/add actions,
@@ -179,14 +196,18 @@ left off:
    The spec calls for validating one engine's performance alongside active
    widget dragging *before* building the rest, since background rendering
    competing with drag physics for frame budget is flagged as a real risk.
-2. Local media background upload + IndexedDB storage (spec §6.6).
-3. A background picker UI (thumbnail gallery).
+   The static gradient presets built 2026-08-03 (Settings > Background) are
+   a stopgap, not a substitute for this.
+2. Local video background upload (spec §6.6) — image upload + IndexedDB
+   storage is built; video isn't, though the size ceiling is reserved.
+3. Bundled default background media (photos/videos shipped with the
+   extension, vs. today's CSS gradient presets).
 4. A real performance-profiling pass against the spec's NFR-1 (<150ms load)
    and NFR-2 (60fps drag) targets — not yet formally measured.
 5. Store listing assets and submission, once the above are in place.
 
 Smaller open threads: the Quick Links widget's add/edit flow is a rough
 `window.prompt`-based placeholder, not a polished inline editor; a few
-recently-built interactions (the weather fetch, grid collision push-down)
-haven't been manually exercised end-to-end in a loaded browser, only
-typechecked and built.
+recently-built interactions (the weather fetch, grid collision push-down,
+the background picker's custom image upload) haven't been manually
+exercised end-to-end in a loaded browser, only typechecked and built.
