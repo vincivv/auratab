@@ -56,6 +56,15 @@ export function GeneralTab({ preferences, onPreferencesChange, onEnterEditMode, 
       </label>
 
       <label className="settings-field">
+        <span>Clock color</span>
+        <input
+          type="color"
+          value={preferences.clockColor}
+          onChange={(e) => onPreferencesChange({ ...preferences, clockColor: e.target.value })}
+        />
+      </label>
+
+      <label className="settings-field">
         <span>Search engine</span>
         <select
           value={preferences.searchEngine}

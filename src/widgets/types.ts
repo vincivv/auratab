@@ -19,6 +19,8 @@ export interface Preferences {
   widgetTransparency: number
   /** Which background .canvas renders — a curated gradient preset or a user-uploaded image (blob lives in IndexedDB, not here). See backgrounds/types.ts. */
   background: BackgroundSelection
+  /** Hex color for the chromeless Clock widget's text — user-adjustable since a fixed near-white default (with only a text-shadow for contrast) can wash out against light custom backgrounds. Drives the --clock-color CSS var. */
+  clockColor: string
 }
 
 export interface WidgetInstance {

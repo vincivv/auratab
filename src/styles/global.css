@@ -455,6 +455,16 @@ body {
   cursor: pointer;
 }
 
+.settings-field input[type='color'] {
+  width: 44px;
+  height: 32px;
+  padding: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+}
+
 .settings-background {
   display: flex;
   flex-direction: column;
@@ -586,7 +596,12 @@ body {
   gap: 2px;
   user-select: none;
   /* Chromeless (NFR-6: contrast) — no glass card behind this one to
-     guarantee contrast against the canvas, so the text needs its own. */
+     guarantee contrast against the canvas, so the text needs its own. A
+     fixed near-white plus this shadow isn't enough against every custom
+     background (a bright/white photo can wash it out) — Settings > General
+     > "Clock color" lets it be changed; --clock-color falls back to the
+     original #f4f2fa if unset. */
+  color: var(--clock-color, #f4f2fa);
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
   /* Establishes a container-query context sized to the box's real current
      pixel dimensions (set inline by DraggableBox as you drag-resize it) —
@@ -610,7 +625,10 @@ body {
 .widget-clock__date {
   font-size: clamp(10px, min(8cqw, 16cqh), 24px);
   line-height: 1.1;
-  color: rgba(244, 242, 250, 0.65);
+  /* Follows --clock-color at reduced opacity instead of a hardcoded color,
+     so picking a custom clock color updates the date line to match instead
+     of leaving it stuck near-white. */
+  color: color-mix(in srgb, var(--clock-color, #f4f2fa) 65%, transparent);
 }
 
 .widget--search {
@@ -621,13 +639,23 @@ body {
 
 .widget--search input {
   width: 100%;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  /* Chromeless (same NFR-6 contrast concern as the clock above) — the pill
+     needs its own frosted-glass treatment since there's no card behind it.
+     A flat 0.12 tint read fine against the original dark gradient default
+     but nearly disappeared against a bright custom background photo, so
+     this got its own backdrop-filter + higher tint + shadow (mirroring
+     .glass-material, but scoped to just the pill shape, not a full
+     rectangular card — keeps the chromeless look intact). */
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 999px;
   padding: 10px 16px;
   color: #f4f2fa;
   font-size: 14px;
   outline: none;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
 }
 
 .widget--search input::placeholder {

@@ -124,6 +124,7 @@ export default function App() {
         style={{
           ['--dot-size' as string]: `${DOT_SIZE}px`,
           ['--widget-transparency' as string]: preferences.widgetTransparency,
+          ['--clock-color' as string]: preferences.clockColor,
           ...backgroundStyle,
         }}
         onPointerDown={longPress.onPointerDown}
